@@ -1,0 +1,26 @@
+.DS_Store
+.pytest_cache/
+__pycache__/
+*.py[cod]
+
+# Local datasets and training outputs
+MaizeData 2/
+Lightweight Dataset for Maize Classification on Resource-Constrained Devices/
+checkpoints/
+
+# Intermediate export files and converter environments
+exports/
+!.gitkeep
+mobile/assets/models/*
+!mobile/assets/models/maize_classifier.tflite
+mobile/.dart_tool/
+mobile/build/
+mobile/.flutter-plugins
+mobile/.flutter-plugins-dependencies
+mobile/.packages
+
+# Local IDE and environment files
+.idea/
+.vscode/
+*.iml
+.env
