@@ -1,8 +1,8 @@
 # Maize Seed Classifier Configurations
 
 # Dataset Paths
-dataset_a_dir: "MaizeData 2"
-dataset_b_dir: "Lightweight Dataset for Maize Classification on Resource-Constrained Devices/EfficientMaize"
+dataset_a_dir: "data/MaizeData 2"
+dataset_b_dir: "data/Lightweight Dataset for Maize Classification on Resource-Constrained Devices/EfficientMaize"
 
 # Preprocessing & Model Params
 image_size: 224
