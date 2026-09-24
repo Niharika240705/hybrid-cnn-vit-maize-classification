@@ -13,6 +13,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.dataset import MaizeDataset, get_transforms
+from src.device import select_device
 from src.model import HybridCNNViTModel
 
 def calculate_metrics(preds, targets):
@@ -47,7 +48,7 @@ def train_phase2(mode="variety_pretrained", fold=None, resume=False, start_epoch
     with open(config_path, 'r') as f:
         config = yaml.safe_load(f)
         
-    device = torch.device("mps" if torch.backends.mps.is_available() and config['device'] == "mps" else "cpu")
+    device = select_device(config["device"])
     print(f"\n--- Running Phase 2 | Mode: {mode} | Fold: {fold} | Device: {device} ---")
     
     # Establish save path
@@ -140,6 +141,8 @@ def train_phase2(mode="variety_pretrained", fold=None, resume=False, start_epoch
             state_dict = torch.load(backbone_weights_path, map_location=device)
             # Filter state dict keys based on ablation
             filtered_state_dict = {}
+            skipped_mismatched = []
+            model_state_dict = model.state_dict()
             for k, v in state_dict.items():
                 if not use_cnn and k.startswith("cnn_branch."):
                     continue
@@ -149,10 +152,18 @@ def train_phase2(mode="variety_pretrained", fold=None, resume=False, start_epoch
                     continue
                 if not use_vit and k.startswith("fusion.proj_vit"):
                     continue
+                if k not in model_state_dict or model_state_dict[k].shape != v.shape:
+                    skipped_mismatched.append(k)
+                    continue
                 filtered_state_dict[k] = v
                 
             msg = model.load_state_dict(filtered_state_dict, strict=False)
             print(f"Load status: {msg}")
+            if skipped_mismatched:
+                print(
+                    f"Skipped {len(skipped_mismatched)} incompatible pretrained tensors "
+                    "because the configured backbone architecture differs."
+                )
         else:
             print(f"WARNING: Pretrained weights not found at {backbone_weights_path}. Training from ImageNet/scratch weights.")
             
@@ -162,13 +173,29 @@ def train_phase2(mode="variety_pretrained", fold=None, resume=False, start_epoch
     # Phase A: Freeze backbone, train only the head
     model.freeze_backbone()
     
-    criterion = nn.CrossEntropyLoss()
+    class_weights = None
+    if config["phase2"].get("use_class_weights", False):
+        class_counts = torch.bincount(
+            torch.tensor([label for _, label in train_dataset.samples]),
+            minlength=2,
+        ).float()
+        class_weights = class_counts.sum() / (len(class_counts) * class_counts)
+        class_weights = class_weights.to(device)
+
+    criterion = nn.CrossEntropyLoss(
+        weight=class_weights,
+        label_smoothing=config["phase2"].get("label_smoothing", 0.0),
+    )
     
     # Set up optimizer with classifier parameters only
     optimizer = optim.AdamW(
         [p for p in model.parameters() if p.requires_grad], 
         lr=config['phase2']['lr_head'], 
         weight_decay=config['phase2']['weight_decay']
+    )
+    scheduler = optim.lr_scheduler.CosineAnnealingLR(
+        optimizer,
+        T_max=max(1, config["phase2"]["epochs"]),
     )
     
     epochs = config['phase2']['epochs']
@@ -187,6 +214,10 @@ def train_phase2(mode="variety_pretrained", fold=None, resume=False, start_epoch
                 model.parameters(), 
                 lr=config['phase2']['lr_finetune'], 
                 weight_decay=config['phase2']['weight_decay']
+            )
+            scheduler = optim.lr_scheduler.CosineAnnealingLR(
+                optimizer,
+                T_max=max(1, config["phase2"]["epochs"] - frozen_epochs),
             )
             backbone_unfrozen = True
 
@@ -230,6 +261,8 @@ def train_phase2(mode="variety_pretrained", fold=None, resume=False, start_epoch
                 _, predicted = outputs.max(1)
                 val_preds.extend(predicted.cpu().numpy())
                 val_targets.extend(labels.cpu().numpy())
+
+        scheduler.step()
                 
         val_metrics = calculate_metrics(val_preds, val_targets)
         epoch_val_loss = val_loss / len(val_dataset)

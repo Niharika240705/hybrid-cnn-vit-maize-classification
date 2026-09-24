@@ -13,6 +13,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.model import HybridCNNViTModel
+from src.device import select_device
 
 
 CONFIG_PATH = Path(os.getenv("MAIZE_CONFIG", PROJECT_ROOT / "src" / "config.yaml"))
@@ -42,7 +43,7 @@ def _load_model():
     with CONFIG_PATH.open("r") as config_file:
         config = yaml.safe_load(config_file)
 
-    _device = torch.device("mps" if config.get("device") == "mps" and torch.backends.mps.is_available() else "cpu")
+    _device = select_device(config.get("device"))
     _model = HybridCNNViTModel(
         cnn_backbone=config["cnn_backbone"],
         vit_backbone=config["vit_backbone"],

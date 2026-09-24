@@ -12,6 +12,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.dataset import MaizeDataset, get_transforms
+from src.device import select_device
 from src.model import HybridCNNViTModel
 
 def train_phase1():
@@ -20,7 +21,7 @@ def train_phase1():
     with open(config_path, 'r') as f:
         config = yaml.safe_load(f)
         
-    device = torch.device("mps" if torch.backends.mps.is_available() and config['device'] == "mps" else "cpu")
+    device = select_device(config["device"])
     print(f"Using device: {device}")
     
     # Create checkpoint directories

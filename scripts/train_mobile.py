@@ -12,13 +12,14 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.dataset import MaizeDataset, get_transforms
+from src.device import select_device
 from src.mobile_model import MobileCNNModel
 
 
 def main():
     with (PROJECT_ROOT / "src" / "config.yaml").open() as config_file:
         config = yaml.safe_load(config_file)
-    device = torch.device("mps" if config["device"] == "mps" and torch.backends.mps.is_available() else "cpu")
+    device = select_device(config["device"])
     output_dir = PROJECT_ROOT / "checkpoints" / "mobile"
     output_dir.mkdir(parents=True, exist_ok=True)
     train_transform, val_transform = get_transforms(config["image_size"])

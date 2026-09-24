@@ -6,11 +6,11 @@ dataset_b_dir: "data/Lightweight Dataset for Maize Classification on Resource-Co
 
 # Preprocessing & Model Params
 image_size: 224
-cnn_backbone: "resnet50"                    # Options: resnet50, efficientnetv2_s
-vit_backbone: "vit_small_patch16_224"        # Options: vit_small_patch16_224, swin_tiny
+cnn_backbone: "resnet50" # Options: resnet50, efficientnetv2_s
+vit_backbone: "swin_tiny_patch4_window7_224" # Options: vit_small_patch16_224, swin_tiny
 embed_dim: 256
 num_heads: 8
-device: "mps"                                # Use mps for Mac GPU, fallback to cpu in code if not available
+device: "cuda" # Use NVIDIA CUDA GPU, fallback to CPU if unavailable
 
 # Phase 1: Pretraining (Variety Classification on Dataset A)
 phase1:
@@ -22,11 +22,13 @@ phase1:
 
 # Phase 2: Finetuning (Quality Classification on Dataset B)
 phase2:
-  batch_size: 16
-  epochs: 10
-  frozen_epochs: 3                           # Number of epochs where backbone is frozen
-  lr_head: 0.001                             # Learning rate for classification head
-  lr_finetune: 0.0001                        # Learning rate for end-to-end finetuning
+  batch_size: 8
+  epochs: 30
+  frozen_epochs: 5
+  lr_head: 0.0005
+  lr_finetune: 0.00001
   weight_decay: 0.0001
-  cv_folds: 5                                # 5-fold cross validation
+  label_smoothing: 0.05
+  use_class_weights: false
+  cv_folds: 5 # 5-fold cross validation
   checkpoint_dir: "checkpoints/phase2"

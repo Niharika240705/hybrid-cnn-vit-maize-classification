@@ -13,6 +13,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.model import HybridCNNViTModel
 from src.mobile_model import MobileCNNModel
+from src.device import select_device as get_device
 
 
 def load_config(config_path):
@@ -21,9 +22,7 @@ def load_config(config_path):
 
 
 def select_device(config):
-    if config.get("device") == "mps" and torch.backends.mps.is_available():
-        return torch.device("mps")
-    return torch.device("cpu")
+    return get_device(config.get("device"))
 
 
 def build_model(config, checkpoint_path, device, mobile=False):

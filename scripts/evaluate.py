@@ -11,6 +11,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.dataset import MaizeDataset, get_transforms
+from src.device import select_device
 from src.model import HybridCNNViTModel
 from scripts.train_phase2 import calculate_metrics
 
@@ -87,7 +88,7 @@ def run_all_evaluations():
     with open(config_path, 'r') as f:
         config = yaml.safe_load(f)
         
-    device = torch.device("mps" if torch.backends.mps.is_available() and config['device'] == "mps" else "cpu")
+    device = select_device(config["device"])
     
     modes = ["variety_pretrained", "imagenet_only", "from_scratch", "cnn_only", "vit_only"]
     results = {}
@@ -170,7 +171,7 @@ if __name__ == "__main__":
         config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'src', 'config.yaml')
         with open(config_path, 'r') as f:
             config = yaml.safe_load(f)
-        device = torch.device("mps" if torch.backends.mps.is_available() and config['device'] == "mps" else "cpu")
+        device = select_device(config["device"])
         m = evaluate_model(mode=args.mode, fold=args.fold, config=config, device=device)
         if m is not None:
             print(f"\nEvaluation Results for {args.mode} (Fold: {args.fold}):")
